@@ -1,36 +1,43 @@
 import java.util.*;
 
-/** Container class to different classes, that makes the whole
- * set of classes one class formally.
- */
-
-/** Shortest path between two vertices.
- *Lühim tee kahe tipu vahel. Programm võtab sisendiks
- * sidusa lihtgraafi ning kaks tippu: algtipu ja lõpptipu. Programm leiab nende
- * vahelise tee, milles on kaari võimalikult vähe, ning tagastab selle kaarte
- * listina selles järjekorras, nagu tee läbitakse. Kui algtipp ja lõpptipp on
- * sama tipp, tagastab programm tühja List objekti."
+/**
+ * Solves the shortest-path problem in an undirected, connected simple graph.
+ * The program receives a graph, a starting vertex and a destination vertex.
+ * It finds a path containing the smallest possible number of arcs and returns
+ * the path as a list of {@code Arc} objects in traversal order. If the starting
+ * vertex and destination vertex are the same, the result is an empty list.
+ * Undirected edges are represented by two oppositely directed arcs.
  */
 public class GraphTask {
 
-   /** Main method. */
+   /** Creates the program runner. */
+   public GraphTask() {
+   }
+
+   /**
+    * Main method that starts the example tests.
+    * @param args command-line arguments (not used)
+    */
    public static void main (String[] args) {
       GraphTask a = new GraphTask();
       a.run();
    }
 
-   /** Actual main method to run examples and everything. */
+   /** Runs the example tests and the large-graph performance test. */
    public void run() {
+      // 1. The starting vertex and destination are the same.
       Graph g1 = new Graph ("Example 1");
       Vertex a1 = g1.createVertex ("A");
-      checkPathLength (g1, a1, a1, 0);
+      checkShortestPath (g1, a1, a1, 0);
 
+      // 2. There is a direct edge between the vertices.
       Graph g2 = new Graph ("Example 2");
       Vertex a2 = g2.createVertex ("A");
       Vertex b2 = g2.createVertex ("B");
       addUndirectedEdge (g2, a2, b2);
-      checkPathLength (g2, a2, b2, 1);
+      checkShortestPath (g2, a2, b2, 1);
 
+      // 3. The only path has three edges.
       Graph g3 = new Graph ("Example 3");
       Vertex a3 = g3.createVertex ("A");
       Vertex b3 = g3.createVertex ("B");
@@ -39,8 +46,9 @@ public class GraphTask {
       addUndirectedEdge (g3, a3, b3);
       addUndirectedEdge (g3, b3, c3);
       addUndirectedEdge (g3, c3, d3);
-      checkPathLength (g3, a3, d3, 3);
+      checkShortestPath (g3, a3, d3, 3);
 
+      // 4. The algorithm must choose the two-edge path over a three-edge path.
       Graph g4 = new Graph ("Example 4");
       Vertex a4 = g4.createVertex ("A");
       Vertex b4 = g4.createVertex ("B");
@@ -52,8 +60,9 @@ public class GraphTask {
       addUndirectedEdge (g4, a4, c4);
       addUndirectedEdge (g4, c4, e4);
       addUndirectedEdge (g4, e4, d4);
-      checkPathLength (g4, a4, d4, 2);
+      checkShortestPath (g4, a4, d4, 2);
 
+      // 5. There are two different paths of the same minimum length.
       Graph g5 = new Graph ("Example 5");
       Vertex a5 = g5.createVertex ("A");
       Vertex b5 = g5.createVertex ("B");
@@ -63,8 +72,9 @@ public class GraphTask {
       addUndirectedEdge (g5, b5, d5);
       addUndirectedEdge (g5, a5, c5);
       addUndirectedEdge (g5, c5, d5);
-      checkPathLength (g5, a5, d5, 2);
+      checkShortestPath (g5, a5, d5, 2);
 
+      // 6. Performance test with more than 2000 vertices.
       Graph largeGraph = new Graph ("Large graph");
       largeGraph.createRandomSimpleGraph (2500, 3500);
       Vertex start = largeGraph.first;
@@ -72,11 +82,11 @@ public class GraphTask {
       while (end.next != null) {
          end = end.next;
       }
+
       long startTime = System.nanoTime();
-      List<Arc> largePath = largeGraph.shortestPath (start, end);
+      largeGraph.shortestPath (start, end);
       long elapsedTime = System.nanoTime() - startTime;
-      System.out.println ("Large graph (2500 vertices): " + largePath.size()
-              + " arcs; search time " + elapsedTime / 1_000_000.0 + " ms");
+      System.out.println ("Large graph (2500 vertices): search time " + elapsedTime / 1_000_000.0 + " ms");
    }
 
    /**
@@ -92,23 +102,50 @@ public class GraphTask {
    }
 
    /**
-    * Runs a shortest-path example and checks the expected number of arcs.
+    * Finds a shortest path, checks its length and verifies that its arcs form
+    * a continuous path from the starting vertex to the destination vertex.
+    * Also prints the graph, the two vertices and the returned path.
     *
     * @param graph graph to search
     * @param start starting vertex
     * @param end destination vertex
-    * @param expectedLength expected number of arcs in the shortest path
+    * @param expectedLength expected number of arcs in a shortest path
     */
-   private void checkPathLength (Graph graph, Vertex start, Vertex end,
-                                 int expectedLength) {
+   private void checkShortestPath (Graph graph, Vertex start, Vertex end, int expectedLength) {
       List<Arc> path = graph.shortestPath (start, end);
-      if (path.size() != expectedLength) {
-         throw new AssertionError ("Expected " + expectedLength
-                 + " arcs, got " + path.size());
-      }
-      System.out.println (graph.id + ": " + path);
-   }
 
+      if (path.size() != expectedLength) {
+         throw new AssertionError ("Expected " + expectedLength + " arcs, got " + path.size());
+      }
+
+      Vertex current = start;
+      for (Arc pathArc : path) {
+         boolean arcBelongsToCurrentVertex = false;
+         Arc outgoing = current.first;
+         while (outgoing != null) {
+            if (outgoing == pathArc) {
+               arcBelongsToCurrentVertex = true;
+               break;
+            }
+            outgoing = outgoing.next;
+         }
+
+         if (!arcBelongsToCurrentVertex) {
+            throw new AssertionError ("Arc " + pathArc + " does not leave vertex " + current);
+         }
+         current = pathArc.target;
+      }
+
+      if (current != end) {
+         throw new AssertionError ("The path does not end at vertex " + end);
+      }
+
+      System.out.println ("\n" + graph);
+      System.out.println ("Start vertex: " + start);
+      System.out.println ("Destination vertex: " + end);
+      System.out.println ("Returned path (arcs): " + path);
+      System.out.println ("Path check: OK");
+   }
 
    /**
     * Vertex represents one vertex in the graph. Each vertex has an identifier,
@@ -124,26 +161,37 @@ public class GraphTask {
       private int info = 0;
       // You can add more fields, if needed
 
+      /**
+       * Creates a vertex with an identifier, a next vertex and a first outgoing arc.
+       * @param s vertex identifier
+       * @param v next vertex in the graph's vertex list
+       * @param e first outgoing arc of this vertex
+       */
       Vertex (String s, Vertex v, Arc e) {
          id = s;
          next = v;
          first = e;
       }
 
+      /**
+       * Creates a vertex with the given identifier.
+       * @param s vertex identifier
+       */
       Vertex (String s) {
          this (s, null, null);
       }
 
+      /** Returns the identifier of this vertex. */
       @Override
       public String toString() {
          return id;
       }
-
    }
 
 
-   /** Arc represents one arrow in the graph. Two-directional edges are
-    * represented by two Arc objects (for both directions).
+   /**
+    * Represents one directed arc in the graph. An undirected edge is
+    * represented by two Arc objects, one for each direction.
     */
    class Arc {
 
@@ -153,24 +201,35 @@ public class GraphTask {
       private int info = 0;
       // You can add more fields, if needed
 
+      /**
+       * Creates an arc with an identifier, a target vertex and a next arc.
+       * @param s arc identifier
+       * @param v target vertex
+       * @param a next arc in the adjacency list
+       */
       Arc (String s, Vertex v, Arc a) {
          id = s;
          target = v;
          next = a;
       }
 
+      /**
+       * Creates an arc with the given identifier.
+       * @param s arc identifier
+       */
       Arc (String s) {
          this (s, null, null);
       }
 
+      /** Returns the identifier of this arc. */
       @Override
       public String toString() {
          return id;
       }
-
    }
 
 
+   /** Represents a graph as a linked list of vertices and outgoing arcs. */
    class Graph {
 
       private String id;
@@ -214,6 +273,10 @@ public class GraphTask {
          return sb.toString();
       }
 
+      /** Creates a vertex and adds it to this graph.
+       * @param vid identifier of the new vertex
+       * @return the created vertex
+       */
       public Vertex createVertex (String vid) {
          Vertex res = new Vertex (vid);
          res.next = first;
@@ -221,6 +284,12 @@ public class GraphTask {
          return res;
       }
 
+      /** Creates a directed arc from one vertex to another.
+       * @param aid identifier of the new arc
+       * @param from starting vertex
+       * @param to target vertex
+       * @return the created arc
+       */
       public Arc createArc (String aid, Vertex from, Vertex to) {
          Arc res = new Arc (aid);
          res.next = from.first;
@@ -242,10 +311,8 @@ public class GraphTask {
             varray [i] = createVertex ("v" + String.valueOf(n-i));
             if (i > 0) {
                int vnr = (int)(Math.random()*i);
-               createArc ("a" + varray [vnr].toString() + "_"
-                  + varray [i].toString(), varray [vnr], varray [i]);
-               createArc ("a" + varray [i].toString() + "_"
-                  + varray [vnr].toString(), varray [i], varray [vnr]);
+               createArc ("a" + varray [vnr].toString() + "_" + varray [i].toString(), varray [vnr], varray [i]);
+               createArc ("a" + varray [i].toString() + "_" + varray [vnr].toString(), varray [i], varray [vnr]);
             } else {}
          }
       }
@@ -289,8 +356,7 @@ public class GraphTask {
          if (n > 2500)
             throw new IllegalArgumentException ("Too many vertices: " + n);
          if (m < n-1 || m > n*(n-1)/2)
-            throw new IllegalArgumentException 
-               ("Impossible number of edges: " + m);
+            throw new IllegalArgumentException ("Impossible number of edges: " + m);
          first = null;
          createRandomTree (n);       // n-1 edges created here
          Vertex[] vert = new Vertex [n];
@@ -305,9 +371,9 @@ public class GraphTask {
          while (edgeCount > 0) {
             int i = (int)(Math.random()*n);  // random source
             int j = (int)(Math.random()*n);  // random target
-            if (i==j) 
+            if (i==j)
                continue;  // no loops
-            if (connected [i][j] != 0 || connected [j][i] != 0) 
+            if (connected [i][j] != 0 || connected [j][i] != 0)
                continue;  // no multiple edges
             Vertex vi = vert [i];
             Vertex vj = vert [j];
@@ -401,5 +467,3 @@ public class GraphTask {
    }
 
 }
-
-
